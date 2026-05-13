@@ -217,8 +217,9 @@ namespace BizzyQCU.Models.Landingpage
         }
 
         // ========== ADD PRODUCT WITH APPROVAL ==========
-        public bool AddProductWithApproval(int enterpriseId, string productName, string description, decimal price, int? categoryId, int preparationTime, byte[] productImage)
+        public bool AddProductWithApproval(int enterpriseId, string productName, string description, decimal price, int? categoryId, int preparationTime, byte[] productImage, out string errorMessage)
         {
+            errorMessage = null;
             try
             {
                 using (var conn = new MySqlConnection(connectionString))
@@ -243,6 +244,7 @@ namespace BizzyQCU.Models.Landingpage
             }
             catch (Exception ex)
             {
+                errorMessage = ex.Message;
                 System.Diagnostics.Debug.WriteLine("AddProductWithApproval error: " + ex.Message);
                 return false;
             }

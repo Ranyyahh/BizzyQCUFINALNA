@@ -116,7 +116,7 @@
                     ? Url.Content(ent.StoreLogo)
                     : Url.Content("~/Content/Images/test-img-profile.jpg");
 
-                <div class="product-card"
+                <div class="product-card enterprise-card"
                      data-category="@cat"
                      data-popularity="@popularity"
                      data-name="@ent.StoreName.ToLower()"
@@ -127,7 +127,7 @@
                         <img src="@logoSrc" alt="@ent.StoreName" />
                     </div>
 
-                    <div class="product-card-info">
+                    <div class="product-card-info enterprise-card-info">
                         <span class="product-store">@ent.StoreName</span>
                         <span class="@statusClass" style="font-size:0.78rem; font-weight:700; margin-bottom:4px;">@statusLabel</span>
                         <div class="product-footer" style="display:flex; justify-content:center; width:100%;">

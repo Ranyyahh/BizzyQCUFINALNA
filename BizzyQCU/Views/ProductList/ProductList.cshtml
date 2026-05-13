@@ -101,6 +101,27 @@
                 string productUrl = Url.Action("ProductChild", "ProductChild", new { id = product.ProductId });
 
                 string imageBase64 = product.ProductImage != null ? Convert.ToBase64String(product.ProductImage) : "";
+                string imageMimeType = "image/jpeg";
+                string productImageSrc = Url.Content("~/Content/Images/placeholder.png");
+                if (product.ProductImage != null && product.ProductImage.Length >= 4)
+                {
+                    var img = product.ProductImage;
+                    if (img[0] == 0x89 && img[1] == 0x50 && img[2] == 0x4E && img[3] == 0x47)
+                    {
+                        imageMimeType = "image/png";
+                    }
+                    else if (img[0] == 0x47 && img[1] == 0x49 && img[2] == 0x46)
+                    {
+                        imageMimeType = "image/gif";
+                    }
+                    else if (img.Length > 11 &&
+                             img[0] == 0x52 && img[1] == 0x49 && img[2] == 0x46 && img[3] == 0x46 &&
+                             img[8] == 0x57 && img[9] == 0x45 && img[10] == 0x42 && img[11] == 0x50)
+                    {
+                        imageMimeType = "image/webp";
+                    }
+                    productImageSrc = "data:" + imageMimeType + ";base64," + Convert.ToBase64String(product.ProductImage);
+                }
 
                 <div class="product-card"
                      data-category="@cat"
@@ -115,15 +136,7 @@
                      data-image-base64="@imageBase64">
 
                     <div class="product-img-placeholder">
-                        @if (product.ProductImage != null)
-                        {
-                            <img src="data:image/jpeg;base64,@Convert.ToBase64String(product.ProductImage)"
-                                 alt="@product.ProductName" />
-                        }
-                        else
-                        {
-                            <img src="~/Content/Images/placeholder.png" alt="@product.ProductName" />
-                        }
+                        <img class="product-img" src="@productImageSrc" alt="@product.ProductName" />
                     </div>
 
                     <div class="product-card-info">

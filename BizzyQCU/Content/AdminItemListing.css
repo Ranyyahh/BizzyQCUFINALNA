@@ -364,7 +364,10 @@ body {
 /* ── PRODUCT SEARCH BAR ── */
 .product-search-wrap {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .product-search-box {
@@ -416,9 +419,38 @@ body {
     flex-shrink: 0;
 }
 
-    .product-search-btn:hover {
-        background: var(--blue-light);
-        color: white;
+.product-search-btn:hover {
+    background: var(--blue-light);
+    color: white;
+}
+
+.status-filter-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-filter-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f5f6fa;
+}
+
+.status-filter-select {
+    border: 2px solid #e0e4f0;
+    background: var(--off-white);
+    color: var(--navy);
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    outline: none;
+    min-width: 120px;
+}
+
+    .status-filter-select:focus {
+        border-color: var(--blue-light);
+        box-shadow: 0 0 0 3px rgba(74,108,247,0.12);
     }
 
 /* ── PRODUCTS GRID ── */
@@ -427,6 +459,37 @@ body {
     grid-template-columns: repeat(3, 1fr);
     gap: 18px;
     flex: 1;
+}
+
+.pagination-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--navy);
+    background: #f0c040;
+}
+
+    .page-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+.page-info {
+    color: #f5f6fa;
+    font-size: 0.84rem;
+    font-weight: 700;
+    min-width: 110px;
+    text-align: center;
 }
 
 /* ── PRODUCT CARD ── */
@@ -939,6 +1002,10 @@ body {
     .products-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+
+    .status-filter-wrap {
+        margin-left: auto;
+    }
 }
 
 @media (max-width: 580px) {
@@ -952,6 +1019,11 @@ body {
 
     .search-wrap {
         display: none;
+    }
+
+    .status-filter-wrap {
+        width: 100%;
+        justify-content: flex-end;
     }
 }
 

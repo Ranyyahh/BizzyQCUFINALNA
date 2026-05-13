@@ -259,7 +259,7 @@ body.home-bg {
     flex-direction: column;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     box-shadow: 0 10px 26px rgba(15, 23, 112, 0.24);
-    min-height: 340px;
+    height: 320px;
     border: 1px solid rgba(255,255,255,0.35);
 }
 
@@ -270,12 +270,14 @@ body.home-bg {
 
 .product-img-placeholder {
     width: 100%;
-    height: 168px;
+    height: auto;
+    flex: 0 0 60%;
     background: #ccd6f0;
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0;
 }
 
 .product-img {
@@ -284,6 +286,8 @@ body.home-bg {
     object-fit: cover;
     object-position: center;
     display: block;
+    border-radius: 0;
+    background: transparent;
 }
 
     .product-img[src=""] {
@@ -295,9 +299,43 @@ body.home-bg {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    flex: 1;
-    justify-content: center;
+    flex: 0 0 40%;
+    justify-content: flex-start;
     align-items: flex-start;
+    overflow: hidden;
+}
+
+/* Enterprise List specific card text balance */
+.enterprise-card .product-img-placeholder {
+    flex: 0 0 60%;
+}
+
+.enterprise-card {
+    height: 340px;
+}
+
+.enterprise-card-info {
+    flex: 0 0 40%;
+    justify-content: flex-start;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    overflow: visible;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.enterprise-card-info .product-store {
+    width: 100%;
+    font-size: 16px;
+    line-height: 1.2;
+    -webkit-line-clamp: 2;
+    margin-bottom: 2px;
+}
+
+.enterprise-card-info .product-footer {
+    margin-top: auto !important;
+    padding-top: 6px;
 }
 
 .product-store {
@@ -801,6 +839,7 @@ body.view-enterprise-bg {
 
     .product-img-placeholder {
         height: 130px;
+        padding: 6px;
     }
 
     .product-card-info {

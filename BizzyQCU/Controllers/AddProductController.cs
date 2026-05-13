@@ -92,6 +92,7 @@ namespace BizzyQCU.Controllers
                 }
 
                 // Add product with pending approval
+                string dbError;
                 bool result = db.AddProductWithApproval(
                     enterprise.EnterpriseId,
                     name,
@@ -99,7 +100,8 @@ namespace BizzyQCU.Controllers
                     price,
                     categoryId,
                     prepTime,
-                    productImage
+                    productImage,
+                    out dbError
                 );
 
                 if (result)
@@ -108,7 +110,10 @@ namespace BizzyQCU.Controllers
                 }
                 else
                 {
-                    return Json(new { success = false, message = "Failed to submit product" });
+                    var safeMessage = string.IsNullOrWhiteSpace(dbError)
+                        ? "Failed to submit product"
+                        : "Failed to submit product: " + dbError;
+                    return Json(new { success = false, message = safeMessage });
                 }
             }
             catch (Exception ex)

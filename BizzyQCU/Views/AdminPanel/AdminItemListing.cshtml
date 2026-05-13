@@ -72,10 +72,24 @@
                         <input type="text" placeholder="Search products..." id="productSearch" />
                         <button class="product-search-btn">🔍</button>
                     </div>
+                    <div class="status-filter-wrap">
+                        <label for="statusFilter" class="status-filter-label">Status</label>
+                        <select id="statusFilter" class="status-filter-select">
+                            <option value="all">All</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="products-grid" id="productsGrid">
                     <div class="loading-state">Loading products...</div>
+                </div>
+
+                <div class="pagination-row">
+                    <button type="button" class="page-btn" id="prevPageBtn">◀ Previous</button>
+                    <span class="page-info" id="pageInfo">Page 1 of 1</span>
+                    <button type="button" class="page-btn" id="nextPageBtn">Next ▶</button>
                 </div>
 
                 <div class="bottom-actions">
@@ -133,7 +147,7 @@
         const enterpriseId = '@ViewBag.EnterpriseId';
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="~/Scripts/AdminItemListing.js?v=20260513a"></script>
+    <script src="~/Scripts/AdminItemListing.js?v=20260513b-pagination-filter"></script>
 
 </body>
 </html>

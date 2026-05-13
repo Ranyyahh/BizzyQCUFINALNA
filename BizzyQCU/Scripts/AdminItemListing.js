@@ -1,23 +1,36 @@
-// ============================================================
+﻿// ============================================================
 // AdminItemListing.js - Dynamic Products Listing
 // ============================================================
 
-// Get enterprise ID from URL - declare once only
 const urlParamsItem = new URLSearchParams(window.location.search);
 const enterpriseIdItem = urlParamsItem.get('enterpriseId');
 let allProductsItem = [];
+let filteredProductsItem = [];
 let selectedProductIdItem = null;
 let approveUiOnOk = null;
 let reportsChartItem = null;
 
+let currentPageItem = 1;
+let totalPagesItem = 1;
+let pageSizeItem = 6;
+
+function getColumnsPerRowItem() {
+    if (window.innerWidth <= 580) return 1;
+    if (window.innerWidth <= 960) return 2;
+    return 3;
+}
+
+function computePageSizeItem() {
+    pageSizeItem = getColumnsPerRowItem() * 2;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('Enterprise ID from URL:', enterpriseIdItem);
+    computePageSizeItem();
 
     if (enterpriseIdItem && enterpriseIdItem !== 'null' && enterpriseIdItem !== 'undefined') {
         loadEnterpriseDetailsItem();
         loadProductsItem();
     } else {
-        console.error('No enterprise ID provided');
         document.getElementById('profileName').textContent = 'No Enterprise Selected';
         document.getElementById('productsGrid').innerHTML = '<div class="empty-state">No enterprise selected</div>';
     }
@@ -26,43 +39,31 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function loadEnterpriseDetailsItem() {
-    console.log('Fetching enterprise details for ID:', enterpriseIdItem);
-
     fetch(`/AdminPanel/GetEnterpriseDetails?enterpriseId=${enterpriseIdItem}`)
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         })
         .then(data => {
-            console.log('Enterprise details received:', data);
-            if (data && data.EnterpriseId) {
-                populateProfileItem(data);
-            } else if (data.message) {
-                console.error('API message:', data.message);
-                document.getElementById('profileName').textContent = 'Enterprise not found';
-            }
+            if (data && data.EnterpriseId) populateProfileItem(data);
+            else if (data.message) document.getElementById('profileName').textContent = 'Enterprise not found';
         })
-        .catch(error => {
-            console.error('Error loading enterprise:', error);
+        .catch(() => {
             document.getElementById('profileName').textContent = 'Error loading enterprise';
         });
 }
 
 function loadProductsItem() {
-    console.log('Fetching products for enterprise ID:', enterpriseIdItem);
-
     fetch(`/AdminPanel/GetProductsForListing?enterpriseId=${enterpriseIdItem}`)
         .then(response => response.json())
         .then(data => {
-            console.log('Products received:', data);
             allProductsItem = data || [];
-            renderProductsItem(allProductsItem);
+            currentPageItem = 1;
+            applyFiltersAndRenderItem();
         })
-        .catch(error => {
-            console.error('Error loading products:', error);
+        .catch(() => {
             document.getElementById('productsGrid').innerHTML = '<div class="empty-state">Error loading products</div>';
+            updatePaginationUiItem(0);
         });
 }
 
@@ -91,7 +92,7 @@ function populateProfileItem(enterprise) {
         for (let i = 1; i <= 5; i++) {
             const starSpan = document.createElement('span');
             starSpan.className = 'star' + (i <= roundedRating ? ' filled' : '');
-            starSpan.textContent = '?';
+            starSpan.textContent = '★';
             starsEl.appendChild(starSpan);
         }
     }
@@ -103,10 +104,44 @@ function populateProfileItem(enterprise) {
 
     const avatarDiv = document.getElementById('profileAvatar');
     if (avatarDiv) {
-        avatarDiv.innerHTML = `<div style="width: 72px; height: 72px; border-radius: 50%; background: ${bgColor}; display: flex; align-items: center; justify-content: center;">
-                                  <span style="color: white; font-size: 32px; font-weight: 600;">${escapeHtmlItem(firstLetter)}</span>
-                              </div>`;
+        avatarDiv.innerHTML = `<div style="width: 72px; height: 72px; border-radius: 50%; background: ${bgColor}; display: flex; align-items: center; justify-content: center;"><span style="color: white; font-size: 32px; font-weight: 600;">${escapeHtmlItem(firstLetter)}</span></div>`;
     }
+}
+
+function isActiveProductItem(product) {
+    const normalizedStatus = (product.Status || '').toLowerCase();
+    const approvalState = Number(product.ApprovalState ?? 0);
+    return approvalState === 1 && (normalizedStatus === 'active' || normalizedStatus === 'approved');
+}
+
+function isInactiveProductItem(product) {
+    return (product.Status || '').toLowerCase() === 'inactive';
+}
+
+function applyFiltersAndRenderItem() {
+    const query = (document.getElementById('productSearch')?.value || '').toLowerCase().trim();
+    const status = document.getElementById('statusFilter')?.value || 'all';
+
+    filteredProductsItem = (allProductsItem || []).filter(p => {
+        const matchesSearch = (p.ProductName || '').toLowerCase().includes(query);
+        if (!matchesSearch) return false;
+        if (status === 'active') return isActiveProductItem(p);
+        if (status === 'inactive') return isInactiveProductItem(p);
+        return true;
+    });
+
+    totalPagesItem = Math.max(1, Math.ceil(filteredProductsItem.length / pageSizeItem));
+    if (currentPageItem > totalPagesItem) currentPageItem = totalPagesItem;
+    if (currentPageItem < 1) currentPageItem = 1;
+
+    renderCurrentPageItem();
+    updatePaginationUiItem(filteredProductsItem.length);
+}
+
+function renderCurrentPageItem() {
+    const start = (currentPageItem - 1) * pageSizeItem;
+    const pageProducts = filteredProductsItem.slice(start, start + pageSizeItem);
+    renderProductsItem(pageProducts);
 }
 
 function renderProductsItem(products) {
@@ -114,18 +149,16 @@ function renderProductsItem(products) {
     if (!grid) return;
 
     if (!products || products.length === 0) {
-        grid.innerHTML = '<div class="empty-state">No products found for this enterprise</div>';
+        grid.innerHTML = '<div class="empty-state">No products found</div>';
+        selectedProductIdItem = null;
         return;
     }
 
     grid.innerHTML = '';
-    selectedProductIdItem = null;
+
     products.forEach(product => {
         const card = document.createElement('div');
         card.className = 'product-card';
-        if (product.Status === 'pending') {
-            card.classList.add('pending');
-        }
         card.dataset.id = product.ProductId;
         card.dataset.name = (product.ProductName || '').toLowerCase();
         card.addEventListener('click', () => selectProductItem(product.ProductId));
@@ -133,169 +166,152 @@ function renderProductsItem(products) {
         const normalizedStatus = (product.Status || '').toLowerCase();
         const approvalState = Number(product.ApprovalState ?? 0);
         let statusBadge = '<span class="status-badge unknown">Unknown</span>';
-        if (approvalState === -1) {
-            statusBadge = '<span class="status-badge rejected">Rejected</span>';
-        } else if (approvalState === 0) {
-            statusBadge = '<span class="status-badge pending">Pending Approval</span>';
-        } else if (approvalState === 1 && (normalizedStatus === 'active' || normalizedStatus === 'approved')) {
-            statusBadge = '<span class="status-badge active">Active</span>';
-        } else if (normalizedStatus === 'inactive') {
-            statusBadge = '<span class="status-badge inactive">Inactive</span>';
-        }
+        if (approvalState === -1) statusBadge = '<span class="status-badge rejected">Rejected</span>';
+        else if (approvalState === 0) statusBadge = '<span class="status-badge pending">Pending Approval</span>';
+        else if (approvalState === 1 && (normalizedStatus === 'active' || normalizedStatus === 'approved')) statusBadge = '<span class="status-badge active">Active</span>';
+        else if (normalizedStatus === 'inactive') statusBadge = '<span class="status-badge inactive">Inactive</span>';
 
         const productImageMarkup = product.ProductImage
             ? `<img class="product-img" src="${product.ProductImage}" alt="${escapeHtmlItem(product.ProductName || 'Product')}" />`
             : `<div class="product-placeholder">${escapeHtmlItem((product.ProductName || 'P').charAt(0))}</div>`;
 
         card.innerHTML = `
-            <div class="product-image-wrap">
-                ${productImageMarkup}
-            </div>
+            <div class="product-image-wrap">${productImageMarkup}</div>
             <div class="product-info-wrap">
                 <div class="product-title">${escapeHtmlItem(product.ProductName || 'Unknown')}</div>
-                <div class="product-detail-line">
-                    <span class="detail-label">Price:</span> ?${parseFloat(product.Price || 0).toFixed(2)}
-                </div>
-                <div class="product-detail-line">
-                    <span class="detail-label">Description:</span> ${escapeHtmlItem(product.Description || 'No description')}
-                </div>
+                <div class="product-detail-line"><span class="detail-label">Price:</span> ₱${parseFloat(product.Price || 0).toFixed(2)}</div>
+                <div class="product-detail-line"><span class="detail-label">Description:</span> ${escapeHtmlItem(product.Description || 'No description')}</div>
                 ${statusBadge}
             </div>
         `;
         grid.appendChild(card);
     });
 
-    // Auto-select first product so Approve/Remove works immediately.
-    if (products.length > 0 && products[0].ProductId) {
-        selectProductItem(products[0].ProductId);
-    }
+    const selectedStillVisible = products.some(p => parseInt(p.ProductId, 10) === parseInt(selectedProductIdItem, 10));
+    if (!selectedStillVisible) selectedProductIdItem = products[0].ProductId;
+    selectProductItem(selectedProductIdItem);
+}
+
+function updatePaginationUiItem(totalCount) {
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
+    const pageInfo = document.getElementById('pageInfo');
+
+    const hasData = totalCount > 0;
+    const effectivePages = hasData ? totalPagesItem : 1;
+
+    if (pageInfo) pageInfo.textContent = hasData ? `Page ${currentPageItem} of ${effectivePages}` : 'Page 0 of 0';
+    if (prevBtn) prevBtn.disabled = !hasData || currentPageItem <= 1;
+    if (nextBtn) nextBtn.disabled = !hasData || currentPageItem >= effectivePages;
 }
 
 function selectProductItem(productId) {
     selectedProductIdItem = productId;
     const cards = document.querySelectorAll('.product-card');
-    cards.forEach(card => {
-        if (parseInt(card.dataset.id) === productId) {
-            card.classList.add('selected');
-        } else {
-            card.classList.remove('selected');
-        }
-    });
+    cards.forEach(card => card.classList.toggle('selected', parseInt(card.dataset.id, 10) === parseInt(productId, 10)));
 }
 
 function setupEventListenersItem() {
-    const productSearch = document.getElementById('productSearch');
-    if (productSearch) {
-        productSearch.addEventListener('input', function () {
-            const query = this.value.toLowerCase().trim();
-            const filtered = allProductsItem.filter(p => (p.ProductName || '').toLowerCase().includes(query));
-            renderProductsItem(filtered);
-        });
-    }
+    document.getElementById('productSearch')?.addEventListener('input', function () {
+        currentPageItem = 1;
+        applyFiltersAndRenderItem();
+    });
+
+    document.getElementById('statusFilter')?.addEventListener('change', function () {
+        currentPageItem = 1;
+        applyFiltersAndRenderItem();
+    });
+
+    document.getElementById('prevPageBtn')?.addEventListener('click', function () {
+        if (currentPageItem > 1) {
+            currentPageItem--;
+            renderCurrentPageItem();
+            updatePaginationUiItem(filteredProductsItem.length);
+        }
+    });
+
+    document.getElementById('nextPageBtn')?.addEventListener('click', function () {
+        if (currentPageItem < totalPagesItem) {
+            currentPageItem++;
+            renderCurrentPageItem();
+            updatePaginationUiItem(filteredProductsItem.length);
+        }
+    });
+
+    window.addEventListener('resize', function () {
+        const oldSize = pageSizeItem;
+        computePageSizeItem();
+        if (oldSize !== pageSizeItem) {
+            currentPageItem = 1;
+            applyFiltersAndRenderItem();
+        }
+    });
 
     const approveBtn = document.getElementById('approveItemBtn');
     if (approveBtn) {
         approveBtn.addEventListener('click', () => {
             const effectiveProductId = selectedProductIdItem || getFirstVisibleProductId();
-            if (effectiveProductId) {
-                const selected = getProductById(effectiveProductId);
-                if (!selected) {
-                    showToastItem('Product not found.', 'error');
-                    return;
-                }
+            if (!effectiveProductId) return showToastItem('Please select a product first', 'error');
 
-                const normalizedStatus = (selected.Status || '').toLowerCase();
-                const approvalState = Number(selected.ApprovalState ?? 0);
-                if (approvalState === 1 && (normalizedStatus === 'active' || normalizedStatus === 'approved')) {
-                    showApproveUi(
-                        'Already Approved',
-                        `"${selected.ProductName || 'This product'}" is already approved.`,
-                        false
-                    );
-                    return;
-                }
+            const selected = getProductById(effectiveProductId);
+            if (!selected) return showToastItem('Product not found.', 'error');
 
-                showApproveUi(
-                    'Confirm Approval',
-                    `Are you sure you want to approve "${selected.ProductName || 'this product'}"?`,
-                    true,
-                    () => approveProductItem(effectiveProductId)
-                );
-            } else {
-                showToastItem('Please select a product first', 'error');
+            const normalizedStatus = (selected.Status || '').toLowerCase();
+            const approvalState = Number(selected.ApprovalState ?? 0);
+            if (approvalState === 1 && (normalizedStatus === 'active' || normalizedStatus === 'approved')) {
+                showApproveUi('Already Approved', `"${selected.ProductName || 'This product'}" is already approved.`, false);
+                return;
             }
+
+            showApproveUi('Confirm Approval', `Are you sure you want to approve "${selected.ProductName || 'this product'}"?`, true, () => approveProductItem(effectiveProductId));
         });
     }
 
-    const removeBtn = document.getElementById('removeItemBtn');
-    if (removeBtn) {
-        removeBtn.addEventListener('click', () => {
-            const effectiveProductId = selectedProductIdItem || getFirstVisibleProductId();
-            if (effectiveProductId) {
-                if (confirm('Are you sure you want to reject this product?')) {
-                    removeProductItem(effectiveProductId);
-                }
-            } else {
-                showToastItem('Please select a product first', 'error');
-            }
-        });
-    }
+    document.getElementById('removeItemBtn')?.addEventListener('click', () => {
+        const effectiveProductId = selectedProductIdItem || getFirstVisibleProductId();
+        if (!effectiveProductId) return showToastItem('Please select a product first', 'error');
+        if (confirm('Are you sure you want to reject this product?')) removeProductItem(effectiveProductId);
+    });
 
-    // Delete enterprise modal
     const deleteBtn = document.getElementById('deleteBtn');
     const modalBackdrop = document.getElementById('deleteModal');
     const cancelDelete = document.getElementById('cancelDelete');
     const confirmDeleteBtn = document.getElementById('confirmDelete');
 
-    if (deleteBtn && modalBackdrop) {
-        deleteBtn.addEventListener('click', () => {
-            const name = document.getElementById('profileName').textContent;
-            const modalName = document.getElementById('modalEnterpriseName');
-            if (modalName) modalName.textContent = name;
-            modalBackdrop.classList.add('active');
-        });
-    }
+    deleteBtn?.addEventListener('click', () => {
+        const name = document.getElementById('profileName').textContent;
+        const modalName = document.getElementById('modalEnterpriseName');
+        if (modalName) modalName.textContent = name;
+        modalBackdrop?.classList.add('active');
+    });
 
-    if (cancelDelete) {
-        cancelDelete.addEventListener('click', () => {
-            if (modalBackdrop) modalBackdrop.classList.remove('active');
-        });
-    }
+    cancelDelete?.addEventListener('click', () => modalBackdrop?.classList.remove('active'));
 
-    if (modalBackdrop) {
-        modalBackdrop.addEventListener('click', (e) => {
-            if (e.target === modalBackdrop) {
-                modalBackdrop.classList.remove('active');
-            }
-        });
-    }
+    modalBackdrop?.addEventListener('click', (e) => {
+        if (e.target === modalBackdrop) modalBackdrop.classList.remove('active');
+    });
 
-    if (confirmDeleteBtn) {
-        confirmDeleteBtn.addEventListener('click', () => {
-            fetch('/AdminPanel/DeleteEnterprise', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `enterpriseId=${enterpriseIdItem}`
+    confirmDeleteBtn?.addEventListener('click', () => {
+        fetch('/AdminPanel/DeleteEnterprise', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `enterpriseId=${enterpriseIdItem}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToastItem('Enterprise deleted successfully', 'success');
+                    setTimeout(() => { window.location.href = '/AdminPanel/AdminLandingEntrep'; }, 1500);
+                } else {
+                    showToastItem('Failed to delete enterprise: ' + (data.message || 'Unknown error'), 'error');
+                    modalBackdrop?.classList.remove('active');
+                }
             })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showToastItem('Enterprise deleted successfully', 'success');
-                        setTimeout(() => {
-                            window.location.href = '/AdminPanel/AdminLandingEntrep';
-                        }, 1500);
-                    } else {
-                        showToastItem('Failed to delete enterprise: ' + (data.message || 'Unknown error'), 'error');
-                        if (modalBackdrop) modalBackdrop.classList.remove('active');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToastItem('An error occurred', 'error');
-                    if (modalBackdrop) modalBackdrop.classList.remove('active');
-                });
-        });
-    }
+            .catch(() => {
+                showToastItem('An error occurred', 'error');
+                modalBackdrop?.classList.remove('active');
+            });
+    });
 }
 
 function approveProductItem(productId) {
@@ -317,10 +333,7 @@ function approveProductItem(productId) {
                 showToastItem('Failed to approve product: ' + (data.message || 'Unknown error'), 'error');
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-            showToastItem('An error occurred', 'error');
-        });
+        .catch(() => showToastItem('An error occurred', 'error'));
 }
 
 function removeProductItem(productId) {
@@ -342,35 +355,23 @@ function removeProductItem(productId) {
                 showToastItem('Failed to reject product: ' + (data.message || 'Unknown error'), 'error');
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-            showToastItem('An error occurred', 'error');
-        });
+        .catch(() => showToastItem('An error occurred', 'error'));
 }
 
 function showToastItem(message, type) {
     const toast = document.getElementById('toast');
     if (!toast) return;
-
     toast.textContent = message;
     toast.className = 'toast ' + type;
     toast.style.display = 'block';
-
-    setTimeout(() => {
-        toast.style.display = 'none';
-    }, 3000);
+    setTimeout(() => { toast.style.display = 'none'; }, 3000);
 }
 
 function escapeHtmlItem(str) {
     if (!str) return '';
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
-/*View reports button toh man, hahaha paganahin nalang pag natapos na tayo */
+
 const viewReportsBtn = document.getElementById('viewReportsBtn');
 if (viewReportsBtn) {
     viewReportsBtn.addEventListener('click', () => {
@@ -380,9 +381,7 @@ if (viewReportsBtn) {
 
 function getProductById(productId) {
     for (let i = 0; i < allProductsItem.length; i++) {
-        if (parseInt(allProductsItem[i].ProductId, 10) === parseInt(productId, 10)) {
-            return allProductsItem[i];
-        }
+        if (parseInt(allProductsItem[i].ProductId, 10) === parseInt(productId, 10)) return allProductsItem[i];
     }
     return null;
 }
@@ -413,37 +412,22 @@ function closeApproveUi() {
     approveUiOnOk = null;
 }
 
-const approveUiCancelBtn = document.getElementById('approveUiCancelBtn');
-if (approveUiCancelBtn) {
-    approveUiCancelBtn.addEventListener('click', closeApproveUi);
-}
+document.getElementById('approveUiCancelBtn')?.addEventListener('click', closeApproveUi);
 
-const approveUiOkBtn = document.getElementById('approveUiOkBtn');
-if (approveUiOkBtn) {
-    approveUiOkBtn.addEventListener('click', () => {
-        const action = approveUiOnOk;
-        closeApproveUi();
-        if (typeof action === 'function') {
-            action();
-        }
-    });
-}
+document.getElementById('approveUiOkBtn')?.addEventListener('click', () => {
+    const action = approveUiOnOk;
+    closeApproveUi();
+    if (typeof action === 'function') action();
+});
 
-const approveUiModal = document.getElementById('approveUiModal');
-if (approveUiModal) {
-    approveUiModal.addEventListener('click', (e) => {
-        if (e.target === approveUiModal) {
-            closeApproveUi();
-        }
-    });
-}
+document.getElementById('approveUiModal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('approveUiModal')) closeApproveUi();
+});
 
 function getFirstVisibleProductId() {
     const cards = document.querySelectorAll('.product-card');
     for (let i = 0; i < cards.length; i++) {
-        const card = cards[i];
-        if (card.style.display === 'none') continue;
-        const id = parseInt(card.dataset.id, 10);
+        const id = parseInt(cards[i].dataset.id, 10);
         if (!isNaN(id)) return id;
     }
     return null;
@@ -473,8 +457,7 @@ function openWeeklyReportsItem() {
             if (totalEl) totalEl.textContent = `Total: ₱ ${total.toLocaleString()}`;
             renderReportsChartItem(labels, values);
         })
-        .catch(error => {
-            console.error('Error loading weekly reports:', error);
+        .catch(() => {
             if (subtitle) subtitle.textContent = 'Unable to load weekly sales.';
             renderReportsChartItem(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], [0, 0, 0, 0, 0, 0, 0]);
         });
@@ -523,18 +506,12 @@ function renderReportsChartItem(labels, values) {
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: context => `₱ ${Number(context.raw || 0).toLocaleString()}`
-                    }
-                }
+                tooltip: { callbacks: { label: context => `₱ ${Number(context.raw || 0).toLocaleString()}` } }
             },
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: {
-                        callback: value => `₱${Number(value || 0).toLocaleString()}`
-                    }
+                    ticks: { callback: value => `₱${Number(value || 0).toLocaleString()}` }
                 }
             }
         }
@@ -548,14 +525,8 @@ function closeWeeklyReportsItem() {
     modal.setAttribute('aria-hidden', 'true');
 }
 
-const closeReportsBtn = document.getElementById('closeReportsBtn');
-if (closeReportsBtn) {
-    closeReportsBtn.addEventListener('click', closeWeeklyReportsItem);
-}
+document.getElementById('closeReportsBtn')?.addEventListener('click', closeWeeklyReportsItem);
 
-const reportsModal = document.getElementById('reportsModal');
-if (reportsModal) {
-    reportsModal.addEventListener('click', (e) => {
-        if (e.target === reportsModal) closeWeeklyReportsItem();
-    });
-}
+document.getElementById('reportsModal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('reportsModal')) closeWeeklyReportsItem();
+});
