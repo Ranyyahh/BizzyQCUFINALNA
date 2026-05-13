@@ -169,6 +169,16 @@ body {
             border-bottom: 1px solid var(--primary-yellow);
         }
 
+        .info-value input.readonly-field {
+            color: #555;
+            cursor: default;
+            opacity: 0.85;
+        }
+
+        .info-value input.readonly-field:focus {
+            border-bottom: none;
+        }
+
 /* QR Bottom Section - nasa loob ng right card */
 .qr-bottom-section {
     background: white;

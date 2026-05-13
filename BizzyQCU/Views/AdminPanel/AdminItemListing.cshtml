@@ -61,7 +61,6 @@
 
                 <div class="profile-actions">
                     <button class="action-btn" id="viewReportsBtn">View Reports</button>
-                    <button class="action-btn" id="viewDocsBtn">View Documents</button>
                 </div>
 
             </div>
@@ -115,11 +114,26 @@
         </div>
     </div>
 
+    <div class="reports-backdrop" id="reportsModal" aria-hidden="true">
+        <div class="reports-card" role="dialog" aria-modal="true" aria-labelledby="reportsTitle">
+            <div class="reports-header">
+                <div>
+                    <h3 id="reportsTitle">Weekly Sales Report</h3>
+                    <p id="reportsSubtitle">Loading sales data...</p>
+                </div>
+                <button type="button" class="reports-close-btn" id="closeReportsBtn" aria-label="Close reports">×</button>
+            </div>
+            <canvas id="reportsChart" height="220"></canvas>
+            <div class="reports-total" id="reportsTotal">Total: ₱ 0</div>
+        </div>
+    </div>
+
     <script>
         const listingUrl = '@Url.Action("AdminItemListing", "AdminPanel")';
         const enterpriseId = '@ViewBag.EnterpriseId';
     </script>
-    <script src="~/Scripts/AdminItemListing.js?v=20260509a"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="~/Scripts/AdminItemListing.js?v=20260513a"></script>
 
 </body>
 </html>

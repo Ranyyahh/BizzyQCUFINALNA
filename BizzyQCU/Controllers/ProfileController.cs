@@ -792,6 +792,31 @@ namespace BizzyQCU.Controllers
         private UserProfileViewModel BuildUserProfileFromDatabase(int userId)
         {
             var isEnterpriseUser = db.GetEnterpriseByUserId(userId) != null;
+            if (isEnterpriseUser)
+            {
+                var enterpriseProfile = db.GetEnterpriseProfileDataByUserId(userId);
+                if (enterpriseProfile != null)
+                {
+                    return new UserProfileViewModel
+                    {
+                        PhotoDataUrl = string.IsNullOrWhiteSpace(enterpriseProfile.StoreLogoPath)
+                            ? (ResolveUploadedAssetPath(userId, "logo") ?? (Session["EnterpriseLogoPath"] as string) ?? DefaultPhotoDataUrl())
+                            : enterpriseProfile.StoreLogoPath,
+                        QrDataUrl = !string.IsNullOrWhiteSpace(enterpriseProfile.QrDataUrl)
+                            ? enterpriseProfile.QrDataUrl
+                            : (ResolveUploadedAssetPath(userId, "qr") ?? (Session["EnterpriseQrPath"] as string) ?? string.Empty),
+                        EnterpriseName = enterpriseProfile.StoreName ?? string.Empty,
+                        EnterpriseType = enterpriseProfile.EnterpriseType ?? string.Empty,
+                        Contact = enterpriseProfile.GcashNumber ?? string.Empty,
+                        Email = enterpriseProfile.Email ?? string.Empty,
+                        ManagerName = enterpriseProfile.ManagerName ?? string.Empty,
+                        StudentId = enterpriseProfile.ManagerStudentId ?? string.Empty,
+                        Section = enterpriseProfile.Section ?? string.Empty,
+                        ManagerContactNumber = enterpriseProfile.ManagerContact ?? string.Empty
+                    };
+                }
+            }
+
             var data = isEnterpriseUser
                 ? db.GetEnterpriseUserProfileByUserId(userId)
                 : db.GetStudentUserProfileByUserId(userId);

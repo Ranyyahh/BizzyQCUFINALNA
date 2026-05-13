@@ -55,7 +55,7 @@
                     <div class="info-row">
                         <div class="info-label">Enterprise Type</div>
                         <div class="info-value">
-                            @Html.TextBoxFor(m => m.Profile.EnterpriseType, new { @class = "editable-field" })
+                            @Html.TextBoxFor(m => m.Profile.EnterpriseType, new { @class = "editable-field readonly-field", @readonly = "readonly", title = "Enterprise type is fetched from your account registration." })
                         </div>
                     </div>
                     <div class="info-row">

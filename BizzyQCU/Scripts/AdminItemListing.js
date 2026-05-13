@@ -8,6 +8,7 @@ const enterpriseIdItem = urlParamsItem.get('enterpriseId');
 let allProductsItem = [];
 let selectedProductIdItem = null;
 let approveUiOnOk = null;
+let reportsChartItem = null;
 
 document.addEventListener('DOMContentLoaded', function () {
     console.log('Enterprise ID from URL:', enterpriseIdItem);
@@ -373,15 +374,7 @@ function escapeHtmlItem(str) {
 const viewReportsBtn = document.getElementById('viewReportsBtn');
 if (viewReportsBtn) {
     viewReportsBtn.addEventListener('click', () => {
-        alert('Reports feature coming soon');
-    });
-}
-
-/*Pre nag n-null sa akin yung docs pati yung qcu id pre  */
-const viewDocsBtn = document.getElementById('viewDocsBtn');
-if (viewDocsBtn) {
-    viewDocsBtn.addEventListener('click', () => {
-        alert('Documents feature coming soon');
+        openWeeklyReportsItem();
     });
 }
 
@@ -454,4 +447,115 @@ function getFirstVisibleProductId() {
         if (!isNaN(id)) return id;
     }
     return null;
+}
+
+function openWeeklyReportsItem() {
+    const modal = document.getElementById('reportsModal');
+    const subtitle = document.getElementById('reportsSubtitle');
+    const totalEl = document.getElementById('reportsTotal');
+    if (!modal) return;
+
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    if (subtitle) subtitle.textContent = 'Loading sales data...';
+    if (totalEl) totalEl.textContent = 'Total: ₱ 0';
+
+    fetch(`/AdminPanel/GetSalesData?enterpriseId=${enterpriseIdItem}&days=7`)
+        .then(response => response.json())
+        .then(data => {
+            const chartRows = normalizeWeeklySalesRows(data || []);
+            const labels = chartRows.map(row => row.Label);
+            const values = chartRows.map(row => Number(row.Value || 0));
+            const total = values.reduce((sum, value) => sum + value, 0);
+            const enterpriseName = document.getElementById('profileName')?.textContent || 'Enterprise';
+
+            if (subtitle) subtitle.textContent = `${enterpriseName} sales for the last 7 days`;
+            if (totalEl) totalEl.textContent = `Total: ₱ ${total.toLocaleString()}`;
+            renderReportsChartItem(labels, values);
+        })
+        .catch(error => {
+            console.error('Error loading weekly reports:', error);
+            if (subtitle) subtitle.textContent = 'Unable to load weekly sales.';
+            renderReportsChartItem(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], [0, 0, 0, 0, 0, 0, 0]);
+        });
+}
+
+function normalizeWeeklySalesRows(rows) {
+    const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit' });
+    const today = new Date();
+    const result = [];
+
+    for (let i = 6; i >= 0; i--) {
+        const day = new Date(today);
+        day.setDate(today.getDate() - i);
+        const label = formatter.format(day);
+        const match = rows.find(row => row.Label === label);
+        result.push({ Label: label, Value: match ? match.Value : 0 });
+    }
+
+    return result;
+}
+
+function renderReportsChartItem(labels, values) {
+    const canvas = document.getElementById('reportsChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    if (reportsChartItem) reportsChartItem.destroy();
+    reportsChartItem = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Weekly Sales',
+                data: values,
+                borderColor: '#d4a017',
+                backgroundColor: 'rgba(212, 160, 23, 0.14)',
+                borderWidth: 3,
+                pointRadius: 5,
+                pointBackgroundColor: '#1a1f4e',
+                pointBorderColor: '#d4a017',
+                fill: true,
+                tension: 0.35
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: context => `₱ ${Number(context.raw || 0).toLocaleString()}`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: value => `₱${Number(value || 0).toLocaleString()}`
+                    }
+                }
+            }
+        }
+    });
+}
+
+function closeWeeklyReportsItem() {
+    const modal = document.getElementById('reportsModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+const closeReportsBtn = document.getElementById('closeReportsBtn');
+if (closeReportsBtn) {
+    closeReportsBtn.addEventListener('click', closeWeeklyReportsItem);
+}
+
+const reportsModal = document.getElementById('reportsModal');
+if (reportsModal) {
+    reportsModal.addEventListener('click', (e) => {
+        if (e.target === reportsModal) closeWeeklyReportsItem();
+    });
 }

@@ -139,7 +139,7 @@ namespace BizzyQCU.Controllers
 
                 int enterpriseId = enterprise.EnterpriseId;
 
-                if (period == "daily")
+                if (period == "daily" || period == "weekly")
                 {
                     var weeklySales = db.GetWeeklySalesData(userId);
                     return Json(new
@@ -147,7 +147,9 @@ namespace BizzyQCU.Controllers
                         success = true,
                         labels = weeklySales.Select(x => x.DayName).ToArray(),
                         values = weeklySales.Select(x => x.Sales).ToArray(),
-                        total = $"This Week: ₱ {weeklySales.Sum(x => x.Sales):N0}"
+                        total = period == "weekly"
+                            ? $"Weekly Sales: ₱ {weeklySales.Sum(x => x.Sales):N0}"
+                            : $"This Week: ₱ {weeklySales.Sum(x => x.Sales):N0}"
                     }, JsonRequestBehavior.AllowGet);
                 }
                 else // monthly

@@ -50,11 +50,11 @@ function getDefaultStats() {
 }
 
 function getZeroChartData(period) {
-    if (period === 'daily') {
+    if (period === 'daily' || period === 'weekly') {
         return {
             labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
             values: [0, 0, 0, 0, 0, 0, 0],
-            total: 'This Week: ₱ 0'
+            total: period === 'weekly' ? 'Weekly Sales: ₱ 0' : 'This Week: ₱ 0'
         };
     }
     return {

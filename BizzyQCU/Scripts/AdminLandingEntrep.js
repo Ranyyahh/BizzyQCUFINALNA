@@ -2,6 +2,14 @@
 const searchInput = document.getElementById('searchInput');
 const grid = document.getElementById('enterprisesGrid');
 const countBadge = document.getElementById('countBadge');
+const prevPageBtn = document.getElementById('prevPageBtn');
+const nextPageBtn = document.getElementById('nextPageBtn');
+const pageStatus = document.getElementById('pageStatus');
+const paginationActions = document.getElementById('paginationActions');
+const pageSize = 6;
+let allEnterprises = [];
+let filteredEnterprises = [];
+let currentPage = 1;
 
 if (!grid || !countBadge) {
     console.error("Missing required DOM elements (grid or countBadge).");
@@ -18,7 +26,10 @@ function loadEnterprises() {
                 return;
             }
 
-            renderCards(data);
+            allEnterprises = data;
+            filteredEnterprises = data;
+            currentPage = 1;
+            renderCards();
         })
         .catch(error => {
             console.error('Error loading enterprises:', error);
@@ -81,19 +92,27 @@ function renderCard(enterprise) {
 }
 
 // ── RENDER ALL ──
-function renderCards(enterprises) {
+function renderCards() {
     grid.innerHTML = '';
 
-    if (!enterprises || enterprises.length === 0) {
+    if (!filteredEnterprises || filteredEnterprises.length === 0) {
         showEmptyState();
         return;
     }
 
-    enterprises.forEach(enterprise => {
+    const totalPages = Math.max(1, Math.ceil(filteredEnterprises.length / pageSize));
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const start = (currentPage - 1) * pageSize;
+    const pageItems = filteredEnterprises.slice(start, start + pageSize);
+
+    pageItems.forEach(enterprise => {
         grid.appendChild(renderCard(enterprise));
     });
 
-    updateCount(enterprises.length);
+    updateCount(filteredEnterprises.length);
+    updatePagination(totalPages);
 }
 
 function updateCount(n) {
@@ -120,28 +139,52 @@ function showEmptyState(query = '') {
 
     grid.appendChild(empty);
     updateCount(0);
+    updatePagination(1);
 }
 
 // ── SEARCH ──
 if (searchInput) {
     searchInput.addEventListener('input', function () {
         const query = this.value.trim().toLowerCase();
-        const cards = grid.querySelectorAll('.enterprise-card');
-        let visible = 0;
+        filteredEnterprises = allEnterprises.filter(enterprise =>
+            (enterprise.StoreName || '').toLowerCase().includes(query) ||
+            (enterprise.Username || '').toLowerCase().includes(query)
+        );
+        currentPage = 1;
 
-        cards.forEach(card => {
-            const match = card.dataset.name.includes(query);
-            card.style.display = match ? '' : 'none';
-            if (match) visible++;
-        });
-
-        updateCount(visible);
-
-        if (visible === 0 && query !== '') {
+        if (filteredEnterprises.length === 0 && query !== '') {
             showEmptyState(query);
         } else {
-            const empty = grid.querySelector('.empty-state');
-            if (empty) empty.remove();
+            renderCards();
+        }
+    });
+}
+
+function updatePagination(totalPages) {
+    if (!paginationActions || !prevPageBtn || !nextPageBtn || !pageStatus) return;
+
+    const hasItems = filteredEnterprises && filteredEnterprises.length > 0;
+    paginationActions.style.display = hasItems ? 'flex' : 'none';
+    pageStatus.textContent = `Page ${currentPage} of ${totalPages}`;
+    prevPageBtn.disabled = currentPage <= 1;
+    nextPageBtn.disabled = currentPage >= totalPages;
+}
+
+if (prevPageBtn) {
+    prevPageBtn.addEventListener('click', function () {
+        if (currentPage > 1) {
+            currentPage--;
+            renderCards();
+        }
+    });
+}
+
+if (nextPageBtn) {
+    nextPageBtn.addEventListener('click', function () {
+        const totalPages = Math.max(1, Math.ceil(filteredEnterprises.length / pageSize));
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderCards();
         }
     });
 }
